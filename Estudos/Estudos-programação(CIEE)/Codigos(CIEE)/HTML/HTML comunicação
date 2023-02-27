@@ -1,0 +1,175 @@
+<app-breadcrump-vaga
+  [titulo]="'Usuário'"
+  [textoBotao]="'Gerenciar Locais'"
+  [textoCancelar]="'Cancelar'"
+  [cssClass]="'btn-cadastrar'"
+  [disabledBotao]="gerenciarLocaisDesabilitado"
+  [cssClassCancelar]="'btn-acao btn btn-cancelar text-right'"
+  (primeiroBotao)="botaoCancelar()"
+  (segundoBotao)="gerenciarLocais()">
+</app-breadcrump-vaga>
+
+<div class="box">
+  <app-cabecalho-gerenciar-acessos></app-cabecalho-gerenciar-acessos>
+  <form class="form-padrao" [formGroup]="form">
+    <div class="box-body header">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="col-md-4">
+            <label class="titulo">Dados do Usuário</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <div class="col-md-4" *ngIf="mostrarCodigo">
+            <app-form-group
+              [control]="form.get('codigo')"
+              fieldId="codigo"
+              label="Código do Usuário"
+            >
+              <input
+                appTrim
+                class="form-control"
+                formControlName="codigo"
+                id="codigo"
+                maxlength="9"
+                type="text"
+                disabled="true"
+              />
+            </app-form-group>
+          </div>
+          <div class="row">
+            <div class="col-md-12">
+              <div class="col-md-4">
+                <app-form-group
+                  [control]="form.get('nome')"
+                  fieldId="nome"
+                  label="Nome*"
+                >
+                  <input
+                    appTrim
+                    class="form-control"
+                    formControlName="nome"
+                    id="nome"
+                    maxlength="100"
+                    type="text"
+                    
+                  />
+                </app-form-group>
+                <div class="row">
+                  <div class="col-md-12">
+                    <app-form-group
+                      [control]="form.get('email')"
+                      fieldId="email"
+                      label="E-mail*"
+                    >
+                      <input
+                        appTrim
+                        class="form-control"
+                        formControlName="email"
+                        id="email"
+                        maxlength="80"
+                        type="text"
+                        [readonly]="!novoUsuario"
+                      />
+                    </app-form-group>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-12">
+                    <label for="switchField" class="col-md-12">
+                      Usuário Ativo?
+                    </label>
+                    <div class="row">
+                      <div class="col-md-12">
+                        <app-switch-field
+                          formControlName="ativo"
+                          textoAtivo="Sim"
+                          textoInativo="Não"
+                        >
+                        </app-switch-field>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row" *ngIf="permiteSelecionarAdm">
+                  <div class="col-md-12">
+                    <label for="switchField" class="col-md-12">
+                      Usuário Administrador?
+                    </label>
+                    <div class="row">
+                      <div class="col-md-12">
+                        <app-switch-field
+                          formControlName="admContrato"
+                          textoAtivo="Sim"
+                          textoInativo="Não"
+                        >
+                        </app-switch-field>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="row">
+                  <div class="col-md-9">
+                    <app-form-group
+                      [control]="form.get('departamento')"
+                      fieldId="departamento"
+                      label="Departamento*"
+                    >
+                      <input
+                        appTrim
+                        class="form-control"
+                        formControlName="departamento"
+                        id="departamento"
+                        maxlength="50"
+                        type="text"
+                       
+                      />
+                    </app-form-group>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row text-right botoes-padding">
+                  <div class="confirmarPesquisaContratos form-padrao">
+                    <button
+                      class="btn-acao-formulario btn-confirmar azulBotaoConfirma btn-reenviar"
+                      (click)="reenviarEmailAcesso()"
+                      [hidden]="esconderReencaminharEmail"
+                      [disabled]="desabilitarReencaminharEmail"
+                    >
+                      Reencaminhar e-mail de Acesso
+                    </button>
+                <button
+                  class="btn-acao-formulario btn-confirmar azulBotaoConfirma btn-salvar"
+                  type="submit"
+                  [disabled]="enviando"
+                  (click)="submeter($event)"
+                >
+                  Salvar Dados
+                </button>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<app-alerta-aviso
+  [(mensagem)]="mensagemAviso"
+  [mostrar]="mensagemAviso"
+></app-alerta-aviso>
+<app-alerta-erro
+  [(mensagem)]="mensagemErro"
+  [mostrar]="mensagemErro"
+></app-alerta-erro>
+
+<app-alerta-sucesso
+  [(mensagem)]="mensagemSucesso"
+  [mostrar]="mensagemSucesso"
+></app-alerta-sucesso>

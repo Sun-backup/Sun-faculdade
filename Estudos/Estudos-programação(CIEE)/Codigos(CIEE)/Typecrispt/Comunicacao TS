@@ -1,0 +1,286 @@
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
+​
+import { BsModalService } from 'ngx-bootstrap';
+​
+import { UtilsService } from 'app/core/utils/utils.service';
+import { SessionService } from 'app/core/session/session.service';
+import { FormUtilsService } from 'app/core/utils/form-utils.service';
+import { ComponentPaginaPadrao } from 'app/ui/page/component-pagina-padrao';
+import { Usuario } from 'app/core/ciee-company/gerenciar-acessos-empresas-contratos/usuario.model';
+import { DominioUsuario } from 'app/core/ciee-company/gerenciar-acessos-empresas-contratos/dominio-usuario.model';
+import { Empresa } from 'app/core/ciee-company/gerenciar-acessos-empresas-contratos/gerenciar-acessos-empresa.model';
+import { Contrato } from 'app/core/ciee-company/gerenciar-acessos-empresas-contratos/gerenciar-acessos-contrato.model';
+import { GerenciarAcessosEmpresasContratosDataService } from 'app/admin/gerenciar-acessos-empresas-contratos/componentes/gerenciar-acessos-empresas-contratos-data-service';
+import { GerenciarAcessosEmpresasContratosUsuariosService } from 'app/core/ciee-company/gerenciar-acessos-empresas-contratos/gerenciar-acessos-empresas-contratos-usuarios.service';
+import { NavigateService } from 'app/core/navigate.service';
+import { StringFilterMenuComponent } from '@progress/kendo-angular-grid';
+// tslint:disable-next-line:max-line-length
+​
+@Component({
+  selector: 'app-usuario',
+  templateUrl: './usuario.component.html',
+  styleUrls: ['./usuario.component.scss']
+})
+export class UsuarioComponent extends ComponentPaginaPadrao implements OnInit {
+  mensagemAviso = '';
+  mensagemErro = '';
+  mensagemSucesso = '';
+  carregando = true;
+  gerenciarLocaisDesabilitado = true;
+  enviando = false;
+  desabilitarReencaminharEmail = true;
+  esconderReencaminharEmail = true;
+  permiteSelecionarAdm = true;
+  public form: FormGroup;
+  private nomeEmpresa: string;
+  private idContrato: number;
+  private idUsuario: number;
+  private contrato: Contrato;
+  private empresa: Empresa;
+  private dadosUsuario: Usuario;
+  public mostrarCodigo = false;
+  public novoUsuario = true;
+​
+  constructor(
+    private modalService: BsModalService,
+    private gerenciarAcessosEmpresasContratosUsuariosService: GerenciarAcessosEmpresasContratosUsuariosService,
+    private route: ActivatedRoute,
+    public navigateService: NavigateService,
+    private gerenciarAcessosEmpresasContratosDataService: GerenciarAcessosEmpresasContratosDataService,
+    private utils: UtilsService,
+    private formUtils: FormUtilsService,
+    private sessionService: SessionService,
+  ) {
+    super(modalService);
+  }
+​
+  ngOnInit() {
+    this.sub.sink = this.route.params.subscribe(id => (this.idContrato = id.idContrato));
+    this.recuperaDados();
+    this.buildForm();
+    if (this.sessionService.currentUserType === 'EMPRESA') {
+      this.permiteSelecionarAdm = false;
+    }
+  }
+  recuperaDados() {
+    this.contrato = this.gerenciarAcessosEmpresasContratosDataService.dadosContrato;
+    this.empresa = this.gerenciarAcessosEmpresasContratosDataService.dadosEmpresa;
+    this.dadosUsuario = this.gerenciarAcessosEmpresasContratosDataService.dadosUsuario;
+    if (this.dadosUsuario) {
+      this.idUsuario = this.dadosUsuario.id;
+      this.novoUsuario = false;
+      this.desabilitarReencaminharEmail = false;
+      this.esconderReencaminharEmail = false;
+    }
+  }
+  buildForm() {
+    this.form = new FormGroup({
+      nome: new FormControl('', [
+        Validators.required,
+        Validators.maxLength(100)
+      ]),
+      email: new FormControl('', [
+        Validators.required,
+        Validators.maxLength(80)
+      ]),
+      departamento: new FormControl('', [
+        Validators.required,
+        Validators.maxLength(50)
+      ]),
+      ativo: new FormControl(true, [Validators.required]),
+      admContrato: new FormControl(false, [Validators.required]),
+      codigo: new FormControl('')
+    });
+    if (this.dadosUsuario) {
+      this.form.get('nome').setValue(this.dadosUsuario.nome);
+      this.form.get('email').setValue(this.dadosUsuario.email);
+      this.form.get('departamento').setValue(this.dadosUsuario.departamento);
+      this.form.get('ativo').setValue(this.dadosUsuario.ativo);
+      this.form.get('admContrato').setValue(this.dadosUsuario.admContrato);
+      this.form.get('codigo').setValue(this.dadosUsuario.codigo);
+      this.formUtils.touchAllControls(this.form);
+      this.dadosUsuario.admContrato ? this.gerenciarLocaisDesabilitado = true : this.gerenciarLocaisDesabilitado = false;
+      this.mostrarCodigo = true;
+    }
+    this.carregando = false;
+  }
+​
+  submeter(evento: Event) {
+    this.enviando = true;
+    evento.preventDefault();
+    this.limparMensagens();
+    if (this.validaCampos() && this.form.valid) {
+      this.verificaAlteracao() ? this.salvar() : this.semAlteracao();
+    } else {
+      this.mensagemAviso =
+        'Existem campos obrigatórios não preenchidos corretamente!';
+      this.formUtils.touchAllControls(this.form);
+      this.enviando = false;
+    }
+  }
+​
+  salvar() {
+    let id;
+    let codigo;
+    if (this.dadosUsuario) {
+      id = this.dadosUsuario.id;
+      codigo = this.dadosUsuario.codigo;
+    }
+    const dominioUsuario = new DominioUsuario({
+      idContrato: this.idContrato,
+      idsLocalContrato: []
+    });
+    const dadosformUsuario = new Usuario({
+      id: id,
+      codigo: codigo,
+      nome: this.dadosUsuario ? this.dadosUsuario.nome : this.form.get('nome').value,
+      departamento: this.dadosUsuario ? this.dadosUsuario.departamento : this.form.get('departamento').value,
+      email: this.dadosUsuario ? this.dadosUsuario.email : this.form.get('email').value,
+      ativo: this.form.get('ativo').value,
+      admContrato: this.form.get('admContrato').value,
+      empresa: this.nomeEmpresa,
+      dominio: dominioUsuario
+    });
+    this.sub.sink = this.gerenciarAcessosEmpresasContratosUsuariosService
+      .salvarUsuario(dadosformUsuario, this.idContrato, this.novoUsuario)
+      .subscribe(
+        retornoDadosFormUsuario => {
+          this.dadosUsuario = retornoDadosFormUsuario;
+          this.gerenciarAcessosEmpresasContratosDataService.dadosUsuario = retornoDadosFormUsuario;
+          this.idUsuario = retornoDadosFormUsuario.id;
+          if (!retornoDadosFormUsuario.admContrato) {
+            this.novoUsuario ? this.enviaParaDadosUsuario() : this.liberaAcoes(retornoDadosFormUsuario);
+          } else {
+            this.liberaAcoes(retornoDadosFormUsuario);
+            this.novoUsuario = false;
+          }
+        },
+        error => {
+          this.mensagemErro = this.utils.parseErrorMessage(error);
+          this.enviando = false;
+        });
+  }
+  validaCampos() {
+    const nome = this.form.get('nome').value;
+    const departamento = this.form.get('departamento').value;
+    const email = this.form.get('email').value;
+    if (nome === '' || departamento === '' || email === '') {
+      this.mensagemAviso =
+        'Existem campos obrigatórios não preenchidos corretamente!';
+      return false;
+    }
+    return true;
+  }
+​
+  limparMensagens(): void {
+    this.mensagemAviso = '';
+    this.mensagemErro = '';
+  }
+​
+  botaoCancelar() {
+    if (this.sessionService.user.isEmpresa) {
+      this.navigateService.navigateTo([
+        '/empresa/gerenciar-acessos-empresas-contratos/',
+        this.idContrato,
+        'grid-usuarios'
+      ]);
+    } else {
+      this.navigateService.navigateTo([
+        'admin/empresa/gerenciar-acessos-empresas-contratos/',
+        this.idContrato,
+        'grid-usuarios'
+      ]);
+    }
+  }
+​
+  gerenciarLocais() {
+    this.navigateService.navigateTo(
+      ['admin/empresa/gerenciar-acessos-empresas-contratos/', this.idContrato, 'usuario', 'gerenciar-locais', this.dadosUsuario.id]
+    );
+  }
+​
+  reenviarEmailAcesso() {
+    this.enviando = true;
+    this.desabilitarReencaminharEmail = true;
+    this.sub.sink = this.gerenciarAcessosEmpresasContratosUsuariosService
+      .atualizar(this.dadosUsuario, {}, '/company/acesso/usuario/' + this.dadosUsuario.id + '/redefinir-acesso', {}, false)
+      .subscribe(retorno => {
+        this.mensagemSucesso = 'Email de redefinição de acesso enviado com sucesso!'
+        this.enviando = false;
+        this.desabilitarReencaminharEmail = false;
+      }
+        , err => {
+          this.mensagemErro = err;
+          this.enviando = false;
+          this.desabilitarReencaminharEmail = false;
+        });
+​
+  }
+​
+  liberaAcoes(retornoDadosFormUsuario) {
+    this.mensagemSucesso = 'Dados do usuário salvos com sucesso!';
+    this.desabilitarReencaminharEmail = false;
+    this.enviando = false;
+    this.mostrarCodigo = true;
+    this.form.get('codigo').setValue(retornoDadosFormUsuario.codigo);
+    this.dadosUsuario.admContrato ? this.gerenciarLocaisDesabilitado = true : this.gerenciarLocaisDesabilitado = false;
+    this.esconderReencaminharEmail = false;
+  }
+  enviaParaDadosUsuario() {
+    this.navigateService.navigateTo(['./gerenciar-locais', this.idUsuario], {
+      relativeTo: this.route,
+      queryParams: { mensagemSucesso: 'Dados do usuário salvos com sucesso!' }
+    });
+  }
+​
+  verificaAlteracao() {
+    const admContratoAtual = this.form.get('admContrato').value;
+    const ativoAtual = this.form.get('ativo').value;
+    const nomeAtual = this.form.get('nome').setValue(this.dadosUsuario.nome);
+    const departamentoAtual = this.form.get('departamento').setValue(this.dadosUsuario.departamento);
+    let admContratoAntes = false;
+    let ativoAntes = true
+    let nomeAntes = this.form.get('nome').value;
+    let departamentoAntes = this.form.get('departamento').value;
+    if (this.dadosUsuario) {
+      admContratoAntes = this.dadosUsuario.admContrato;
+      ativoAntes = this.dadosUsuario.ativo
+      nomeAntes = this.dadosUsuario.departamento;
+      departamentoAntes = this.dadosUsuario.nome;
+    }
+    const mudouAdmContrato = admContratoAntes !== admContratoAtual;
+    const mudouAtivo = ativoAntes !== ativoAtual;
+    const mudouDepartamento = departamentoAntes !== departamentoAtual;
+    const mudouNome = nomeAntes !== nomeAtual;
+    return this.novoUsuario || mudouAdmContrato || mudouAtivo || mudouDepartamento || mudouNome;
+  }
+​
+​
+  semAlteracao() {
+    this.desabilitarReencaminharEmail = false;
+    this.enviando = false;
+    this.mensagemAviso = 'Não houve alteração no cadastro do Usuário!'
+  }
+​  //Outro jeito de editar o back
+  habilitarEdicao() {
+    if (this.sessionService.currentUserType === 'BACKOFFICE') {
+      return this.novoUsuario;
+    } else {
+      return !this.novoUsuario;
+    }
+  }
+  // Edita back usando javascript puro
+  // editbackoffice(){
+  //   if(this.sessionService.currentUserType === 'BACKOFFICE'){
+  //     let nome = <HTMLInputElement>document.getElementById("nome");
+  //     let departamento = <HTMLInputElement>document.getElementById("departamento");
+  //     nome.readOnly = false;
+  //     departamento.readOnly = false;
+  //   }else{
+  //     let element = <HTMLInputElement>document.getElementById("nome");
+  //     element.readOnly = false;
+  //   }
+  // }
+}
